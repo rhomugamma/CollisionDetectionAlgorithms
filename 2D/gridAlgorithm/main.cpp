@@ -605,6 +605,8 @@ void handleCollision(std::vector<object>& objects, std::vector<std::vector<std::
             // Check for collisions within the current cell
             for (int i = 0; i < gr[x][y].size(); i++) {
 
+				std::cout << gr[x][y].size() << '\n';
+
                 for (int j = i + 1; j < gr[x][y].size(); j++) {
                     // Calculate the distance between the two objects
                     float dx = gr[x][y][i]->coordinatesX - gr[x][y][j]->coordinatesX;
@@ -625,6 +627,8 @@ void handleCollision(std::vector<object>& objects, std::vector<std::vector<std::
 
 						float dotProduct = (normalX * relativeVelocityX) + (normalY * relativeVelocityY);
 						float impulse = ((1 + gr[x][y][i]->e) * dotProduct) / (gr[x][y][i]->mass + gr[x][y][j]->mass);
+
+						std::cout << "impulse: " << impulse << '\n';
 
 						/* float V_c = ((gr[x][y][i]->velocityX * k) / (3 * sqrt(2) * R * PI * d * d)); */
 
