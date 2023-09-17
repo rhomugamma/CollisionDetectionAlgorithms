@@ -21,7 +21,7 @@ double lastMouseY = 0.0; // Initial Y position of the mouse (center of the windo
 bool mouseButtonPressed = false;   // Define sphere vertices
 const int sectors = 6;
 const int stacks = sectors / 2;
-const int numberObjects = 25;
+const int numberObjects = 100;
 
 
 const char* vertexShaderSource = R"(
@@ -552,6 +552,19 @@ class SimBox {
 };
 
 
+class Grid {
+
+	public:
+
+		int width;
+		int height;
+		int depth;
+		int minCellX, maxCellX, minCellY, maxCellY, minCellZ, maxCellZ;
+		float cellSize;
+
+};
+
+
 class Sphere {
 
 	public: 
@@ -664,57 +677,76 @@ class Sphere {
 
 		}
 
-		void objectCollision(std::vector<Sphere>& sphereObjects) {
-			
-			for (int i = 0; i < sphereObjects.size(); i++) {
+		void objectCollision(std::vector<Sphere>& sphereObjects, std::vector<std::vector<std::vector<std::vector<Sphere*>>>>& gridVector, Grid& grid) {
 
-				for (int j = i + 1; j < sphereObjects.size(); j++) {
+			// Loop through each cell in the grid
+    		for (int x = 0; x < grid.width; x++) {
 
-					float dx = sphereObjects[j].coordinatesX - sphereObjects[i].coordinatesX - (sphereObjects[j].radius - sphereObjects[i].radius);
-					float dy = sphereObjects[j].coordinatesY - sphereObjects[i].coordinatesY - (sphereObjects[j].radius - sphereObjects[i].radius);
-					float dz = sphereObjects[j].coordinatesZ - sphereObjects[i].coordinatesZ - (sphereObjects[j].radius - sphereObjects[i].radius);
-					float distance = sqrt((dx * dx) + (dy * dy) + (dz * dz));
+				/* std::cout << "Grid X: " << x << '\n'; */
 
-					float limit = sphereObjects[i].radius + sphereObjects[j].radius;
+		        for (int y = 0; y < grid.height; y++) {
 
-					if (distance <= limit) {
+					/* std::cout << "Grid Y: " << y << '\n'; */
 
-						/* float velX = objects[i].velocityX; */
+					// Check for collisions within the current cell
+					for (int z = 0; z < grid.depth; z++) {
 
-						/* velocityX = ((objects[i].mass * objects[i].velocityX) + (objects[j].mass * objects[j].velocityX) - (objects[j].mass * objects[i].e * (objects[i].velocityX - objects[j].velocityX))) / (objects[i].mass + objects[j].mass); */
-						/* objects[j].velocityX = ((objects[i].mass * velX) + (objects[j].mass * objects[j].velocityX) + (objects[i].mass * objects[j].e * (velX - objects[j].velocityX))) / (objects[i].mass + objects[j].mass); */
+						/* std::cout << "Grid Z: " << z << '\n'; */
 
-						float normalX = dx / distance;
-			            float normalY = dy / distance;
-			            float normalZ = dz / distance;
+						for (int i = 0; i < gridVector[x][y][z].size(); i++) {
 
-                		float relativeVelocityX = sphereObjects[j].velocityX - sphereObjects[i].velocityX;
-               		 	float relativeVelocityY = sphereObjects[j].velocityY - sphereObjects[i].velocityY;
-               		 	float relativeVelocityZ = sphereObjects[j].velocityZ - sphereObjects[i].velocityZ;
-                		float dotProduct = (relativeVelocityX * normalX) + (relativeVelocityY * normalY) + (relativeVelocityZ * normalZ);
+							/* std::cout << "Object " << i << " from Cell  (" << x << ", " << y << ", " << z << ")" << " Check" << '\n'; */ 
+							 
+        	    		    for (int j = i + 1; j < gridVector[x][y][z].size(); j++) {
 
-	           		    sphereObjects[i].velocityX += normalX * dotProduct;
-    	           		sphereObjects[i].velocityY += normalY * dotProduct;
-    	           		sphereObjects[i].velocityZ += normalZ * dotProduct;
+								/* std::cout << "Object " << j <<  " comparasion in Cell  (" << x << ", " << y << ", " << z << ")" << " Check" << '\n'; */ 
+                	    		
+								// Calculate the distance between the two objects
+            	        		float dx = gridVector[x][y][z][i]->coordinatesX - gridVector[x][y][z][j]->coordinatesX;
+	    	        	        float dy = gridVector[x][y][z][i]->coordinatesY - gridVector[x][y][z][j]->coordinatesY;
+		   	        	        float dz = gridVector[x][y][z][i]->coordinatesZ - gridVector[x][y][z][j]->coordinatesZ;
+    	    	        	    float distance = sqrt((dx * dx) + (dy * dy) + (dz * dz));
 
-        	       		sphereObjects[j].velocityX -= normalX * dotProduct;
-            	   		sphereObjects[j].velocityY -= normalY * dotProduct;
-	           	   		sphereObjects[j].velocityZ -= normalZ * dotProduct;
+                		    	// Check for collision using the radius of the objects
+            	    		    float limit = gridVector[x][y][z][i]->radius + gridVector[x][y][z][j]->radius;
+                
+								if (distance <= limit) {
 
-						/* float impulse = ((1 + sphereObjects[i].e) * dotProduct) / (sphereObjects[i].mass + sphereObjects[j].mass); */
+									/* std::cout << "Collision between object " << i << " and " << j << " from cell (" << x << ", " << y << ", " << z << ")" << " Check" << '\n'; */
+    	    
+									// If there is a collision, resolve it by updating the velocities of the objects
+			                        // using the simple elastic collision formula
+    	    	            	    float normalX = dx / distance; // Normal vector in x-direction
+	            	    	        float normalY = dy / distance; // Normal vector in y-direction
+			     	    	        float normalZ = dz / distance; // Normal vector in z-direction  
 
-	          		    /* sphereObjects[i].velocityX -= (impulse * sphereObjects[i].mass * normalX) * V_c; */
-    	           		/* sphereObjects[i].velocityY -= (impulse * sphereObjects[i].mass * normalY) * V_c; */
-    	           		/* sphereObjects[i].velocityZ -= (impulse * sphereObjects[i].mass * normalZ) * V_c; */
+									float relativeVelocityX = gridVector[x][y][z][i]->velocityX - gridVector[x][y][z][j]->velocityX;
+									float relativeVelocityY = gridVector[x][y][z][i]->velocityY - gridVector[x][y][z][j]->velocityY;
+									float relativeVelocityZ = gridVector[x][y][z][i]->velocityZ - gridVector[x][y][z][j]->velocityZ;
+	
+									float dotProduct = (normalX * relativeVelocityX) + (normalY * relativeVelocityY) + (normalZ * relativeVelocityZ);
+									float impulse = ((1 + gridVector[x][y][z][i]->e) * dotProduct) / (gridVector[x][y][z][i]->mass + gridVector[x][y][z][j]->mass);
+	
+									/* float V_c = ((gr[x][y][i]->velocityX * k) / (3 * sqrt(2) * R * PI * d * d)); */
 
-        	       		/* sphereObjects[j].velocityX += (impulse * sphereObjects[i].mass * normalX) * V_c; */
-            	   		/* sphereObjects[j].velocityY += (impulse * sphereObjects[i].mass * normalY) * V_c; */ 
-	           	   		/* sphereObjects[j].velocityZ += (impulse * sphereObjects[i].mass * normalZ) * V_c; */
+									gridVector[x][y][z][i]->velocityX -= (impulse * gridVector[x][y][z][j]->mass * normalX) * V_c;
+									gridVector[x][y][z][i]->velocityY -= (impulse * gridVector[x][y][z][j]->mass * normalY) * V_c;
+									gridVector[x][y][z][i]->velocityZ -= (impulse * gridVector[x][y][z][j]->mass * normalZ) * V_c;
+	
+									gridVector[x][y][z][j]->velocityX += (impulse * gridVector[x][y][z][i]->mass * normalX) * V_c;
+									gridVector[x][y][z][j]->velocityY += (impulse * gridVector[x][y][z][i]->mass * normalY) * V_c;
+									gridVector[x][y][z][j]->velocityZ += (impulse * gridVector[x][y][z][i]->mass * normalZ) * V_c;
 
-					}	
+	                			}
+    	        
+							}
+        	
+						}
+    	
+					}
 
 				}
-
+	
 			}
 
 		}
@@ -757,7 +789,7 @@ class Sphere {
 		}
 
 
-		void update(std::vector<Sphere>& sphereObjects, SimBox& simBox, Model& modelObject) {
+		void update(std::vector<Sphere>& sphereObjects, SimBox& simBox, Model& modelObject, std::vector<std::vector<std::vector<std::vector<Sphere*>>>>& gridVector, Grid& grid) {
 
 			GLfloat totalTime = glfwGetTime();
 			deltaTime = totalTime - frameTime;
@@ -795,7 +827,7 @@ class Sphere {
 
 			borderCollision(simBox);
 
-			objectCollision(sphereObjects);
+			objectCollision(sphereObjects, gridVector, grid);
 
 			/* modelCollision(sphereObjects, modelObject); */
 
@@ -831,6 +863,7 @@ class Sphere {
 		}
 
 };
+
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 
@@ -916,12 +949,13 @@ void processInput(GLFWwindow* window, glm::vec3& cameraPos, glm::vec3& cameraFro
 }
 
 
-void init(Model& modelObject, std::vector<Sphere>& sphereObjects, Axis& axis, ModelBox& modelBox, SimBox& simBox, GLuint& shaderProgram) {
+void init(Model& modelObject, std::vector<Sphere>& sphereObjects, Axis& axis, ModelBox& modelBox, SimBox& simBox, Grid& grid, std::vector<std::vector<std::vector<std::vector<Sphere*>>>>& gridVector, GLuint& shaderProgram) {
 
 	axis.initAxis();
 	modelObject.initModel();
 	modelBox.initModelBox(modelObject);
 	simBox.initSimBox(modelObject, modelBox);
+
 
 	float radius = 0.1;
 
@@ -931,9 +965,10 @@ void init(Model& modelObject, std::vector<Sphere>& sphereObjects, Axis& axis, Mo
 	float incrementX = (simBox.maxX - simBox.minX) / (circlesX + 2);
 	float incrementZ = (simBox.maxZ - simBox.minZ) / (circlesZ + 2);
 
-	float positionX = 0.0;
+	float positionX = simBox.minX + (2 * radius);
 	float positionY = simBox.maxY;
-	float positionZ = 0.0;
+	float positionZ = simBox.maxZ - (radius);
+	float unPositionZ = positionZ;
 
 	for (int i = 0; i < numberObjects; i++) {
 
@@ -957,23 +992,95 @@ void init(Model& modelObject, std::vector<Sphere>& sphereObjects, Axis& axis, Mo
 		sphereObjects[i].e = 1.0;
 		sphereObjects[i].V_c = 1.0;
 
+		if (positionZ >= simBox.maxZ) {
+
+			positionZ = unPositionZ - (2 * radius);
+			unPositionZ = positionZ;
+			positionX = simBox.minX + (2 * radius);
+
+		}
+
 		positionX += incrementX;
 		positionZ += incrementZ;
 
 		sphereObjects[i].init(shaderProgram);
 
-		/* std::cout << "hi" << i << '\n'; */
-
 	}
+
+	grid.cellSize = 4 * (2.1 * radius);
+
+	grid.minCellX = simBox.minX / grid.cellSize;
+
+	grid.maxCellX = simBox.maxX / grid.cellSize;
+
+	grid.minCellY = simBox.minY / grid.cellSize;
+
+	grid.maxCellY = simBox.maxX / grid.cellSize;
+
+	grid.minCellZ = simBox.minZ / grid.cellSize;
+
+	grid.maxCellZ = simBox.maxZ / grid.cellSize;
+
+
+	grid.width = abs(grid.minCellX) + abs(grid.maxCellX);
+	grid.height = abs(grid.minCellY) + abs(grid.maxCellY);
+	grid.depth = abs(grid.minCellZ) + abs(grid.maxCellZ);
+
+
+	/* std::cout << "Width: " << grid.width << '\n'; */
+	/* std::cout << "Height: " << grid.height << '\n'; */
+	/* std::cout << "Depth: " << grid.depth << '\n'; */
+
+
+	/* std::cout << "Min Cell X: " << grid.minCellX << '\n'; */
+	/* std::cout << "Max Cell X: " << grid.maxCellX << '\n'; */
+	/* std::cout << "Min Cell Y: " << grid.minCellY << '\n'; */
+	/* std::cout << "Max Cell Y: " << grid.maxCellY << '\n'; */
+	/* std::cout << "Min Cell Z: " << grid.minCellZ << '\n'; */
+	/* std::cout << "Max Cell Z: " << grid.maxCellZ << '\n'; */
+
+	gridVector.resize(grid.width, std::vector<std::vector<std::vector<Sphere*>>>(grid.height, std::vector<std::vector<Sphere*>>(grid.depth, std::vector<Sphere*>(0))));
 
 }
 
 
-void update(std::vector<Sphere>& sphereObjects, SimBox& simBox, Model& modelObject) {
+void update(std::vector<Sphere>& sphereObjects, SimBox& simBox, Model& modelObject, Grid& grid, std::vector<std::vector<std::vector<std::vector<Sphere*>>>>& gridVector) {
 
 	for (int i = 0; i < sphereObjects.size(); i++) {
 
-		sphereObjects[i].update(sphereObjects, simBox, modelObject);
+		sphereObjects[i].update(sphereObjects, simBox, modelObject, gridVector, grid);
+
+	}
+
+
+	float sum = 1 / grid.cellSize;
+
+	for (int x = 0; x < gridVector.size(); x++) {
+
+		for (int y = 0; y < gridVector[x].size(); y++) {
+
+			for (int z = 0; z < gridVector[x][y].size(); z++) {
+			
+				gridVector[x][y][z].clear();
+			
+			}
+
+		}
+
+	}
+
+
+	for (int i = 0; i < sphereObjects.size(); i++) {
+
+		int actualCellX = static_cast<int>((sphereObjects[i].coordinatesX / grid.cellSize) + (grid.width / 2));
+		int actualCellY = static_cast<int>((sphereObjects[i].coordinatesY / grid.cellSize) + (grid.height / 2));
+		int actualCellZ = static_cast<int>((sphereObjects[i].coordinatesZ / grid.cellSize) + (grid.depth / 2));
+
+		if (actualCellX < grid.width && actualCellX >= 0 && actualCellY < grid.height && actualCellY >= 0 && actualCellZ < grid.depth && actualCellZ >= 0) {
+
+			gridVector[actualCellX][actualCellY][actualCellZ].push_back(&sphereObjects[i]);
+
+		}
 
 	}
 
@@ -1031,6 +1138,11 @@ int main() {
 	SimBox simBox;
 
 	std::vector<Sphere> sphereObjects;
+	
+	Grid grid;
+
+	std::vector<std::vector<std::vector<std::vector<Sphere*>>>> gridVector; 
+
 
 	modelObject.filename = "Leviathan.obj";
 
@@ -1091,7 +1203,7 @@ int main() {
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
-	init(modelObject, sphereObjects, axis, modelBox, simBox, shaderProgram);
+	init(modelObject, sphereObjects, axis, modelBox, simBox, grid, gridVector, shaderProgram);
 
 	// Define camera properties
 	glm::vec3 cameraPos = glm::vec3(simBox.maxX, simBox.maxY, simBox.maxZ);
@@ -1107,7 +1219,7 @@ int main() {
 	 while (!glfwWindowShouldClose(window)) {
 
         processInput(window, cameraPos, cameraFront, cameraRight, cameraUp, cameraYaw, cameraPitch); // Handle camera movement
-		update(sphereObjects, simBox, modelObject);
+		update(sphereObjects, simBox, modelObject, grid, gridVector);
 		display(modelObject, sphereObjects, axis, modelBox, simBox, cameraPos, cameraFront, cameraUp, window, shaderProgram);
         glfwPollEvents();
 
